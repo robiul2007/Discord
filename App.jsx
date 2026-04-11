@@ -1,3 +1,4 @@
+// Part 1 of 4
 import React, { useState, useEffect, useRef } from 'react';
 import './index.css';
 
@@ -6,22 +7,20 @@ const DB_URL = "https://virat-fashion-default-rtdb.firebaseio.com/";
 export default function App() {
   const [isAuth, setIsAuth] = useState(localStorage.getItem('viratAdminLoggedIn') === 'true');
   const [adminName, setAdminName] = useState(localStorage.getItem('viratAdminUsername') || 'Admin');
-  
   const [authMode, setAuthMode] = useState('login');
   const [authUser, setAuthUser] = useState('');
   const [authPass, setAuthPass] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
-  
+
   const [view, setView] = useState('dashboard-view');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(localStorage.getItem('viratDarkMode') === 'true');
-  
+
   const [toast, setToast] = useState({ show: false, msg: '', type: 'success' });
 
   const [products, setProducts] = useState({});
   const [orders, setOrders] = useState({});
   const [users, setUsers] = useState({});
-  
   const [stats, setStats] = useState({ rev: 0, pending: 0, active: 0, cust: 0, units: 0, upi: 0, cod: 0 });
   const [chartData, setChartData] = useState([0,0,0,0,0,0,0]);
   
@@ -30,7 +29,7 @@ export default function App() {
   const [chats, setChats] = useState({});
   const [chatMessages, setChatMessages] = useState({});
   const [adminChatInput, setAdminChatInput] = useState('');
-  
+
   const [settings, setSettings] = useState({ upiId: '', insta: '', avatar: localStorage.getItem('viratAdminAvatar') || 'https://via.placeholder.com/40' });
   const [delPassState, setDelPassState] = useState(!!localStorage.getItem('viratDeletePassword'));
   const [showResetDel, setShowResetDel] = useState(false);
@@ -43,7 +42,7 @@ export default function App() {
   const chatEndRef = useRef(null);
 
   useEffect(() => { if (isDarkMode) document.body.classList.add('dark-mode'); else document.body.classList.remove('dark-mode'); }, [isDarkMode]);
-  
+
   useEffect(() => {
     if (isAuth) { fetchData(); fetchSettings(); fetchChatList(); const interval = setInterval(fetchChatList, 10000); return () => clearInterval(interval); }
   }, [isAuth]);
@@ -62,10 +61,12 @@ export default function App() {
     setToast({ show: true, msg, type });
     setTimeout(() => setToast({ show: false, msg: '', type: 'success' }), 3000); 
   };
-    const handleAuth = async (e) => {
+
+  const handleAuth = async (e) => {
     e.preventDefault();
     if (!authUser || !authPass) return showToastMsg("Enter Username & Password", "error");
     setAuthLoading(true);
+
     try {
       if (authMode === 'login' && authUser === 'ViratAdmin' && authPass === 'ViratAdmin') { 
         localStorage.setItem('viratAdminLoggedIn', 'true');
@@ -77,6 +78,7 @@ export default function App() {
       }
       const res = await fetch(DB_URL + 'admins.json');
       const data = await res.json() || {}; const adminList = Object.values(data);
+
       if (authMode === 'register') {
         if (adminList.find(a => a.username === authUser) || authUser === 'ViratAdmin') { 
             setAuthLoading(false);
@@ -91,14 +93,22 @@ export default function App() {
             setIsAuth(true); 
             setAdminName(authUser); 
         } 
-        else { showToastMsg("❌ Incorrect Credentials!", "error"); }
+        else { showToastMsg("❌ Incorrect Credentials!", "error");
+        }
       }
-    } catch(e) { showToastMsg("Error connecting to server", "error"); }
+    } catch(e) { showToastMsg("Error connecting to server", "error");
+    }
     setAuthLoading(false);
+  };
+
+  const handleGoogleAuth = () => {
+    showToastMsg("Google Auth UI added! Connect Firebase SDK to activate.", "info");
   };
 
   const handleLogout = () => { localStorage.removeItem('viratAdminLoggedIn'); localStorage.removeItem('viratAdminUsername'); setIsAuth(false); };
 
+
+// Part 2 of 4
   const fetchData = async () => {
     try {
       let [pRes, uRes, oRes] = await Promise.all([fetch(DB_URL + 'products.json'), fetch(DB_URL + 'users.json'), fetch(DB_URL + 'orders.json')]);
@@ -106,8 +116,9 @@ export default function App() {
       setProducts(pData); setUsers(uData); setOrders(oData);
       
       let initialStocks = {}; Object.keys(pData).forEach(k => initialStocks[k] = pData[k].stock); setStockInputs(initialStocks);
-      
+
       let rev = 0, pend = 0, units = 0, upi = 0, cod = 0; let cData = [0,0,0,0,0,0,0];
+
       Object.keys(oData).forEach((key, i) => {
         let o = oData[key];
         if (o.status === "Delivered") { rev += parseInt(o.totalAmount); cData[i % 7] += parseInt(o.totalAmount); }
@@ -116,6 +127,7 @@ export default function App() {
         if (o.paymentType === 'UPI') upi += parseInt(o.totalAmount);
         if (o.paymentType === 'COD') cod += parseInt(o.totalAmount);
       });
+
       setStats({ rev, pending: pend, active: Object.keys(pData).length, cust: Object.keys(uData).length, units, upi, cod }); setChartData(cData.reverse());
     } catch (e) {}
   };
@@ -136,13 +148,14 @@ export default function App() {
       } catch(e) {} 
   };
 
-
   const handleAddProduct = async (e) => {
     e.preventDefault();
     const imageInput = document.getElementById('p_images');
     if (!imageInput.files || imageInput.files.length === 0) return showToastMsg("⚠️ Select at least 1 image!", "error");
+
     const btn = document.getElementById('submitBtn');
     btn.innerHTML = "Uploading..."; btn.disabled = true;
+
     try {
       let b64Array = [];
       for (let i = 0; i < imageInput.files.length; i++) {
@@ -161,18 +174,22 @@ export default function App() {
           img: b64Array[0], 
           gallery: b64Array 
       };
+
       await fetch(DB_URL + 'products.json', { method: 'POST', body: JSON.stringify(productData) });
       showToastMsg("🎉 Product Published!", "success"); e.target.reset(); 
       const previewDiv = document.getElementById('multi-image-preview');
       if(previewDiv) previewDiv.innerHTML = '';
       fetchData(); setView('products-view');
-    } catch (err) { showToastMsg("Error publishing product", "error"); }
+    } catch (err) { showToastMsg("Error publishing product", "error");
+    }
     btn.innerHTML = "Publish to Live Website"; btn.disabled = false;
   };
 
-  const fetchChatList = async () => { try { let res = await fetch(DB_URL + 'chats.json'); let data = await res.json(); if(data) setChats(data); if(activeChatUserId) fetchAdminMessages(activeChatUserId); } catch(e) {} };
-  
-  const fetchAdminMessages = async (userId) => { try { let res = await fetch(`${DB_URL}chats/${userId}/messages.json`); let msgs = await res.json(); if(msgs) setChatMessages(msgs); } catch(e) {} };
+  const fetchChatList = async () => { try { let res = await fetch(DB_URL + 'chats.json');
+  let data = await res.json(); if(data) setChats(data); if(activeChatUserId) fetchAdminMessages(activeChatUserId); } catch(e) {} };
+
+  const fetchAdminMessages = async (userId) => { try { let res = await fetch(`${DB_URL}chats/${userId}/messages.json`); let msgs = await res.json();
+  if(msgs) setChatMessages(msgs); } catch(e) {} };
   
   const sendAdminMessage = async () => { 
       if (!adminChatInput.trim() || !activeChatUserId) return;
@@ -181,7 +198,9 @@ export default function App() {
       fetchAdminMessages(activeChatUserId); } catch(e) {} 
   };
   
-  const fetchSettings = async () => { try { let res = await fetch(DB_URL + 'settings.json'); let data = await res.json(); if(data) setSettings(s => ({...s, upiId: data.upiId || '', insta: data.insta || ''})); } catch(e) {} };
+  const fetchSettings = async () => { try { let res = await fetch(DB_URL + 'settings.json');
+  let data = await res.json(); if(data) setSettings(s => ({...s, upiId: data.upiId || '', insta: data.insta || ''}));
+  } catch(e) {} };
   
   const handleDangerAction = async () => { 
       if (document.getElementById('delete-auth-pass').value !== localStorage.getItem('viratDeletePassword')) return showToastMsg("❌ Incorrect Password", "error");
@@ -195,12 +214,46 @@ export default function App() {
 
 
 
+// Part 3 of 4
   if (!isAuth) {
     return (
       <div className="auth-screen">
         <div className="auth-box"><h2 style={{fontFamily: 'Playfair Display', marginBottom: '20px', color: 'var(--text-main)'}}>{authMode === 'login' ? 'Virat Fashion Admin Login' : 'Admin Registration'}</h2>
-          <form onSubmit={handleAuth}><input type="text" className="auth-input" placeholder={authMode === 'login' ? 'Admin Username' : 'Choose Username'} value={authUser} onChange={e=>setAuthUser(e.target.value)} /><input type="password" className="auth-input" placeholder={authMode === 'login' ? 'Password' : 'Choose Password'} value={authPass} onChange={e=>setAuthPass(e.target.value)} /><button type="submit" className="auth-btn">{authLoading ? 'Processing...' : (authMode === 'login' ? 'Secure Login' : 'Create Account')}</button></form>
-          <p style={{marginTop: '15px', fontSize: '13px', color: '#888', cursor: 'pointer', textDecoration: 'underline'}} onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>{authMode === 'login' ? 'New Admin? Create Account' : 'Already have an account? Login'}</p>
+          <form onSubmit={handleAuth}>
+            <input type="text" className="auth-input" placeholder={authMode === 'login' ? 'Admin Username' : 'Choose Username'} value={authUser} onChange={e=>setAuthUser(e.target.value)} />
+            <input type="password" className="auth-input" placeholder={authMode === 'login' ? 'Password' : 'Choose Password'} value={authPass} onChange={e=>setAuthPass(e.target.value)} />
+            <button type="submit" className="auth-btn">{authLoading ? 'Processing...' : (authMode === 'login' ? 'Secure Login' : 'Create Account')}</button>
+          </form>
+  
+          <p style={{marginTop: '15px', fontSize: '13px', color: '#888', cursor: 'pointer', textDecoration: 'underline'}} onClick={() => setAuthMode(authMode === 'login' ? 'register' : 'login')}>
+            {authMode === 'login' ? 'New Admin? Create Account' : 'Already have an account? Login'}
+          </p>
+
+          <div style={{ display: 'flex', alignItems: 'center', margin: '25px 0 15px 0' }}>
+            <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-color, #eee)' }} />
+            <span style={{ padding: '0 10px', color: '#888', fontSize: '12px' }}>or continue with</span>
+            <hr style={{ flex: 1, border: 'none', borderTop: '1px solid var(--border-color, #eee)' }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
+            <button 
+              type="button" 
+              onClick={handleGoogleAuth}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px', border: '1px solid var(--border-color, #ddd)', borderRadius: '8px', background: 'var(--input-bg, #fff)', color: 'var(--text-main, #333)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: '0.3s' }}
+            >
+              <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" style={{ width: '18px' }} />
+              Google
+            </button>
+            <button 
+              type="button" 
+              onClick={() => showToastMsg("Facebook Auth UI added!", "info")}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '10px', border: '1px solid var(--border-color, #ddd)', borderRadius: '8px', background: 'var(--input-bg, #fff)', color: 'var(--text-main, #333)', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: '0.3s' }}
+            >
+              <i className="fab fa-facebook" style={{ color: '#1877F2', fontSize: '18px' }}></i>
+              Facebook
+            </button>
+          </div>
+
         </div>
         <div className={`toast ${toast.show ? 'show' : ''} toast-${toast.type}`}><span>{toast.msg}</span></div>
       </div>
@@ -252,7 +305,6 @@ export default function App() {
             <div className="stat-card" style={{background: 'rgba(255, 168, 0, 0.1)', border: '1px solid #ffa800'}}><div><p style={{color:'#ffa800', fontWeight:'bold'}}>COD Value (Pending/Collected)</p><h3 style={{color:'#ffa800'}}>₹{stats.cod.toLocaleString()}</h3></div><i className="fas fa-money-bill-wave" style={{fontSize:'30px', color:'#ffa800'}}></i></div>
           </div></div></div>
         )}
-                                                                                                                                               
 
         {view === 'products-view' && (
           <div className="view-section active"><div className="card"><div className="card-header"><h3>Live Inventory</h3><button className="btn-primary" onClick={fetchData}><i className="fas fa-sync"></i> Refresh</button></div><div style={{overflowX: 'auto'}}><table><thead><tr><th>Image</th><th>Name & Details</th><th>Price</th><th>Stock Status</th><th>Action</th></tr></thead><tbody>
@@ -274,6 +326,8 @@ export default function App() {
           </tbody></table></div></div></div>
         )}
 
+
+// Part 4 of 4
         {view === 'add-product-view' && (
           <div className="view-section active"><div className="card"><div className="card-header"><h3>Publish Product</h3></div><form id="uploadForm" className="form-grid" onSubmit={handleAddProduct}>
             <div className="form-group"><label>Product Name</label><input type="text" id="p_name" required/></div>
@@ -324,7 +378,8 @@ export default function App() {
 
         {view === 'customers-view' && (
           <div className="view-section active"><div className="card"><div className="card-header"><h3>Registered Customers</h3><button className="btn-primary" onClick={fetchData}>Refresh</button></div><div style={{overflowX: 'auto'}}><table><thead><tr><th>User ID</th><th>Name</th><th>Phone</th><th>Actions</th></tr></thead><tbody>
-            {Object.keys(users).map(key => { const u = users[key]; return (<tr key={key}><td style={{color:'var(--primary)'}}>{u.userId}</td><td>{u.name}</td><td>{u.phone}</td><td><button onClick={() => { setModalType('confirm'); setModalData({ msg: `Toggle ban for ${u.name}?`, action: async () => { await fetch(`${DB_URL}users/${key}.json`, { method: 'PATCH', body: JSON.stringify({ banned: !u.banned }) }); fetchData(); showToastMsg('User updated!'); }}); }} className="btn-primary" style={{background: u.banned ? '#1bc5bd' : '#f64e60'}}>{u.banned ? 'Unban' : 'Ban'}</button></td></tr>); })}
+            {Object.keys(users).map(key => { const u = users[key]; return (<tr key={key}><td style={{color:'var(--primary)'}}>{u.userId}</td><td>{u.name}</td><td>{u.phone}</td><td><button onClick={() => { setModalType('confirm'); setModalData({ msg: `Toggle ban for ${u.name}?`, action: async () => { await fetch(`${DB_URL}users/${key}.json`, { method: 'PATCH', body: JSON.stringify({ banned: !u.banned }) }); fetchData(); showToastMsg('User updated!'); }}); }} className="btn-primary" style={{background: u.banned ? '#1bc5bd' : '#f64e60'}}>{u.banned ? 'Unban' : 'Ban'}</button></td></tr>);
+            })}
           </tbody></table></div></div></div>
         )}
 
@@ -338,17 +393,21 @@ export default function App() {
             </div>
           </div></div></div>
         )}
-                                                                                                                                                                                                                                                
+                                            
         {view === 'settings-view' && (
           <div className="view-section active">
             <div className="card"><div className="card-header"><h3>Admin Settings</h3></div><div className="form-grid">
-              <div className="form-group full-width" style={{display:'flex', alignItems:'center', gap:'20px'}}><img src={settings.avatar} style={{width:'80px', height:'80px', borderRadius:'50%', objectFit:'cover', border:'3px solid var(--primary)'}} alt="" /><div><label>Upload Profile Picture</label><input type="file" accept="image/*" onChange={(e) => { const f = e.target.files[0]; if(f){ const r = new FileReader(); r.onload=(ev)=>{setSettings({...settings, avatar: ev.target.result}); localStorage.setItem('viratAdminAvatar', ev.target.result); showToastMsg('Avatar updated');}; r.readAsDataURL(f); } }} style={{background:'transparent', border:'none', padding:0}} /></div></div>
+              <div className="form-group full-width" style={{display:'flex', alignItems:'center', gap:'20px'}}><img src={settings.avatar} style={{width:'80px', height:'80px', borderRadius:'50%', objectFit:'cover', border:'3px solid var(--primary)'}} alt="" /><div><label>Upload Profile Picture</label><input type="file" accept="image/*" onChange={(e) => { const f = e.target.files[0];
+              if(f){ const r = new FileReader(); r.onload=(ev)=>{setSettings({...settings, avatar: ev.target.result}); localStorage.setItem('viratAdminAvatar', ev.target.result); showToastMsg('Avatar updated');}; r.readAsDataURL(f);
+              } }} style={{background:'transparent', border:'none', padding:0}} /></div></div>
               <div className="form-group"><label>Instagram Handle</label><input type="text" placeholder="e.g. virat_fashion_official" value={settings.insta} onChange={e => setSettings({...settings, insta: e.target.value})} /></div>
               <div className="form-group"><label>UPI ID (For Checkout)</label><input type="text" placeholder="yourname@upi" value={settings.upiId} onChange={e => setSettings({...settings, upiId: e.target.value})} /></div>
-              <div className="form-group full-width"><button className="btn-primary" onClick={async () => { try { await fetch(DB_URL + 'settings.json', { method: 'PUT', body: JSON.stringify({ upiId: settings.upiId, insta: settings.insta }) }); showToastMsg('✅ Saved!', 'success'); } catch(e) {} }}>Save Store Configuration</button></div>
+              <div className="form-group full-width"><button className="btn-primary" onClick={async () => { try { await fetch(DB_URL + 'settings.json', { method: 'PUT', body: JSON.stringify({ upiId: settings.upiId, insta: settings.insta }) });
+              showToastMsg('✅ Saved!', 'success'); } catch(e) {} }}>Save Store Configuration</button></div>
             </div></div>
             <div className="card" style={{marginTop:'20px', border:'1px solid #f64e60'}}><div className="card-header" style={{borderBottom:'1px solid rgba(246,78,96,0.2)'}}><h3 style={{color:'#f64e60'}}><i className="fas fa-exclamation-triangle"></i> Danger Zone: Wipe Data</h3></div><div className="form-grid">
-              {!delPassState ? (<div className="form-group full-width"><label>Set Secure Deletion Password</label><div style={{display:'flex', gap:'10px'}}><input type="password" id="new-del-pass" placeholder="Create a deletion password"/><button className="btn-primary" onClick={()=>{const p=document.getElementById('new-del-pass').value; if(p){localStorage.setItem('viratDeletePassword', p); setDelPassState(true); showToastMsg('Password Set!');}}}>Save</button></div></div>) : showResetDel ? (<div className="form-group full-width" style={{background:'rgba(246,78,96,0.05)', padding:'15px', borderRadius:'8px'}}><label style={{color:'#f64e60', fontWeight:'bold', marginBottom:'10px'}}>Reset Deletion Password</label><input type="text" id="r-u" placeholder="Admin Username" style={{marginBottom:'10px'}}/><input type="password" id="r-p" placeholder="Admin Login Password" style={{marginBottom:'10px'}}/><input type="password" id="r-n" placeholder="New Deletion Password" style={{marginBottom:'10px'}}/><button className="btn-primary" style={{background:'#f64e60'}} onClick={async ()=>{const u=document.getElementById('r-u').value, p=document.getElementById('r-p').value, n=document.getElementById('r-n').value; if(u==='ViratAdmin'&&p==='ViratAdmin'){localStorage.setItem('viratDeletePassword',n); showToastMsg('Reset!'); setShowResetDel(false);}else{const res=await fetch(DB_URL+'admins.json');const data=await res.json()||{}; if(Object.values(data).find(a=>a.username===u&&a.password===p)){localStorage.setItem('viratDeletePassword',n); showToastMsg('Reset!'); setShowResetDel(false);}else showToastMsg('Invalid Credentials', 'error');}}}>Reset</button><div style={{textAlign:'right', marginTop:'10px'}}><a href="#" onClick={(e)=>{e.preventDefault();setShowResetDel(false);}} style={{color:'#888', fontSize:'12px'}}>Cancel</a></div></div>) : (<><div className="form-group full-width" style={{display:'flex', gap:'10px', flexWrap:'wrap'}}><button className="btn-primary" style={{background:'#ffa800', flex:1}} onClick={()=>{setModalType('delete-auth'); setModalData('orders');}}><i className="fas fa-trash"></i> Wipe Orders</button><button className="btn-primary" style={{background:'#8950fc', flex:1}} onClick={()=>{setModalType('delete-auth'); setModalData('users');}}><i className="fas fa-users-slash"></i> Wipe Customers</button><button className="btn-primary" style={{background:'#f64e60', flex:1}} onClick={()=>{setModalType('delete-auth'); setModalData('all');}}><i className="fas fa-skull-crossbones"></i> Factory Reset</button></div><div className="form-group full-width" style={{textAlign:'right', marginTop:'-10px'}}><a href="#" onClick={(e)=>{e.preventDefault();setShowResetDel(true);}} style={{color:'#888', fontSize:'12px', textDecoration:'underline'}}>Forgot Deletion Password?</a></div></>)}
+              {!delPassState ? (<div className="form-group full-width"><label>Set Secure Deletion Password</label><div style={{display:'flex', gap:'10px'}}><input type="password" id="new-del-pass" placeholder="Create a deletion password"/><button className="btn-primary" onClick={()=>{const p=document.getElementById('new-del-pass').value; if(p){localStorage.setItem('viratDeletePassword', p); setDelPassState(true); showToastMsg('Password Set!');}}}>Save</button></div></div>) : showResetDel ? (<div className="form-group full-width" style={{background:'rgba(246,78,96,0.05)', padding:'15px', borderRadius:'8px'}}><label style={{color:'#f64e60', fontWeight:'bold', marginBottom:'10px'}}>Reset Deletion Password</label><input type="text" id="r-u" placeholder="Admin Username" style={{marginBottom:'10px'}}/><input type="password" id="r-p" placeholder="Admin Login Password" style={{marginBottom:'10px'}}/><input type="password" id="r-n" placeholder="New Deletion Password" style={{marginBottom:'10px'}}/><button className="btn-primary" style={{background:'#f64e60'}} onClick={async ()=>{const u=document.getElementById('r-u').value, p=document.getElementById('r-p').value, n=document.getElementById('r-n').value; if(u==='ViratAdmin'&&p==='ViratAdmin'){localStorage.setItem('viratDeletePassword',n); showToastMsg('Reset!'); setShowResetDel(false);}else{const res=await fetch(DB_URL+'admins.json');const data=await res.json()||{}; if(Object.values(data).find(a=>a.username===u&&a.password===p)){localStorage.setItem('viratDeletePassword',n);
+              showToastMsg('Reset!'); setShowResetDel(false);}else showToastMsg('Invalid Credentials', 'error');}}}>Reset</button><div style={{textAlign:'right', marginTop:'10px'}}><a href="#" onClick={(e)=>{e.preventDefault();setShowResetDel(false);}} style={{color:'#888', fontSize:'12px'}}>Cancel</a></div></div>) : (<><div className="form-group full-width" style={{display:'flex', gap:'10px', flexWrap:'wrap'}}><button className="btn-primary" style={{background:'#ffa800', flex:1}} onClick={()=>{setModalType('delete-auth'); setModalData('orders');}}><i className="fas fa-trash"></i> Wipe Orders</button><button className="btn-primary" style={{background:'#8950fc', flex:1}} onClick={()=>{setModalType('delete-auth'); setModalData('users');}}><i className="fas fa-users-slash"></i> Wipe Customers</button><button className="btn-primary" style={{background:'#f64e60', flex:1}} onClick={()=>{setModalType('delete-auth'); setModalData('all');}}><i className="fas fa-skull-crossbones"></i> Factory Reset</button></div><div className="form-group full-width" style={{textAlign:'right', marginTop:'-10px'}}><a href="#" onClick={(e)=>{e.preventDefault();setShowResetDel(true);}} style={{color:'#888', fontSize:'12px', textDecoration:'underline'}}>Forgot Deletion Password?</a></div></>)}
             </div></div>
           </div>
         )}
@@ -373,12 +432,11 @@ export default function App() {
       )}
 
       {modalType === 'confirm' && modalData && (<div className="modal-overlay" style={{display:'flex', position:'fixed', inset:0, zIndex:999999, alignItems:'center', justifyContent:'center'}}><div className="modal-content" style={{maxWidth:'350px', textAlign:'center', position:'relative'}}><div style={{fontSize:'40px', marginBottom:'15px'}}>🤔</div><h3 style={{marginBottom:'20px'}}>{modalData.msg}</h3><div style={{display:'flex', gap:'10px'}}><button className="btn-primary" style={{background:'#ccc', flex:1}} onClick={()=>setModalType(null)}>Cancel</button><button className="btn-primary" style={{background:'#f64e60', flex:1}} onClick={()=>{modalData.action(); setModalType(null);}}>Yes</button></div></div></div>)}
-      {modalType === 'delete-auth' && (<div className="modal-overlay" style={{display:'flex', position:'fixed', inset:0, zIndex:999999, alignItems:'center', justifyContent:'center'}}><div className="modal-content" style={{maxWidth:'350px', textAlign:'center', position:'relative'}}><div style={{fontSize:'40px', marginBottom:'15px'}}>⚠️</div><h3 style={{marginBottom:'15px', color:'#f64e60'}}>Confirm Deletion</h3><input type="password" id="delete-auth-pass" placeholder="Deletion Password" style={{width:'100%', padding:'12px', marginBottom:'15px', border:'1px solid var(--border-color)', borderRadius:'6px'}} /><div style={{display:'flex', gap:'10px'}}><button className="btn-primary" style={{background:'#ccc', flex:1}} onClick={()=>setModalType(null)}>Cancel</button><button className="btn-primary" style={{background:'#f64e60', flex:1}} onClick={handleDangerAction}>Wipe Data</button></div></div></div>)}
-      <div className={`toast ${toast.show ? 'show' : ''} toast-${toast.type}`}><span>{toast.msg}</span></div>
+      
+      
+      
+      {modalType === 'delete-auth' && (<div className="modal-overlay" style={{display:'flex', position:'fixed', inset:0, zIndex:999999, alignItems:'center', justifyContent:'center'}}><div className="modal-content" style={{maxWidth:'350px', textAlign:'center', position:'relative'}}><div style={{fontSize:'40px', marginBottom:'15px'}}>⚠️</div><h3 style={{marginBottom:'15px', color:'#f64e60'}}>Confirm Deletion</h3><input type="password" id="delete-auth-pass" placeholder="Deletion Password" style={{width:'100%', padding:'12px', marginBottom:'15px', border:'1px solid var(--border-color)', borderRadius:'6px'}} /><div style={{display:'flex', gap:'10px'}}><button className="btn-primary" style={{background:'#ccc', flex:1}} onClick={()=>setModalType(null)}>Cancel</button><button className="btn-primary" style={{background:'#f64e60', flex:1}} onClick={handleDangerAction}>Wipe Data</button></div></div></div>)} 
+            <div className={`toast ${toast.show ? 'show' : ''} toast-${toast.type}`}><span>{toast.msg}</span></div>
     </>
   );
-            }
-              
-
-        
-        
+}
